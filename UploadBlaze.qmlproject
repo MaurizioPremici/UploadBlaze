@@ -1,0 +1,18 @@
+import QmlProject
+
+Project {
+    mainFile: "UploadBlazeContent/App.qml"
+    mainUiFile: "UploadBlazeContent/UploadBlaze.ui.qml"
+
+    QmlFiles {
+        directory: "."
+    }
+
+    ImageFiles {
+        directory: "."
+    }
+
+    importPaths: [ "." ]
+
+    qt6Project: true
+}

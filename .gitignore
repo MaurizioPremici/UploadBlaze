@@ -1,0 +1,21 @@
+.venv/
+__pycache__/
+.pytest_cache/
+build/
+dist/
+.DS_Store
+*.qmlproject.user*
+*.pyc
+
+# Generated/unused C++ preview scaffolding from Qt Design Studio.
+# The maintained application uses app.py, blaze_core and the QML forms.
+/Dependencies/
+/Generated/
+/App/
+/cmake/
+/CMakeLists.txt
+/CMakeLists.txt.shared
+/qds.cmake
+/UploadBlaze.qrc
+/UploadBlaze/CMakeLists.txt
+/UploadBlazeContent/CMakeLists.txt
