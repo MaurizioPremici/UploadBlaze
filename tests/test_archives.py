@@ -45,6 +45,17 @@ def test_zip_roundtrip_unique_names_and_originals(tmp_path):
     assert [digest(a), digest(b)] == before
 
 
+def test_single_file_zip_keeps_the_original_basename(tmp_path):
+    source = tmp_path / 'testUPLOAD.jpeg'
+    source.write_bytes(b'image bytes')
+
+    result = archives.zip_files([str(source)], str(tmp_path / 'out'), threading.Event(), noop)
+
+    assert Path(result).name == 'testUPLOAD.zip'
+    with zipfile.ZipFile(result) as archive:
+        assert archive.namelist() == ['testUPLOAD.jpeg']
+
+
 def test_zip_cancellation_removes_partial_and_preserves_original(tmp_path):
     source = tmp_path / 'source.bin'
     source.write_bytes(os.urandom(3 * 1024 * 1024))

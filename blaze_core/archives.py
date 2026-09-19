@@ -20,7 +20,6 @@ import stat
 import tempfile
 import threading
 from typing import Callable
-import uuid
 import zipfile
 
 import py7zr
@@ -79,8 +78,9 @@ def _safe_name(name: str) -> bool:
 def _output(output_dir: str, stem: str, extension: str):
     directory = Path(output_dir).absolute()
     directory.mkdir(parents=True, exist_ok=True)
-    # Random names avoid replacing any source or previous result.
-    final = directory / f'{stem}-{uuid.uuid4().hex[:12]}{extension}'
+    final = directory / f'{stem}{extension}'
+    if final.exists():
+        raise ValueError(f'{final.name} already exists in the output folder. Move or rename it, then try again.')
     fd, name = tempfile.mkstemp(prefix='.uploadblaze-', suffix='.part', dir=directory)
     return final, Path(name), os.fdopen(fd, 'w+b')
 
@@ -99,7 +99,10 @@ def zip_files(paths: list[str], output_dir: str, cancel, progress: Progress) -> 
     if any(not _safe_name(path.name) for path in sources):
         raise ValueError('A selected filename contains unsupported characters.')
     total = sum(path.stat().st_size for path in sources)
-    final, part, target = _output(output_dir, 'Backup', '.zip')
+    # A one-file archive keeps the original filename, changing only its extension.
+    # Multiple inputs have no single original filename, so they use Backup.zip.
+    stem = sources[0].stem if len(sources) == 1 else 'Backup'
+    final, part, target = _output(output_dir, stem, '.zip')
     done = 0
     used = set()
     try:
