@@ -16,7 +16,6 @@ import re
 import stat
 import tempfile
 import threading
-import uuid
 
 import requests
 from b2sdk.v2 import AbstractProgressListener, B2Api, B2HttpApiConfig, InMemoryAccountInfo
@@ -201,6 +200,9 @@ def upload_files(files: list[dict], config: dict, key: str, state_dir: str,
             snapshots[fingerprint['path']] = snapshot
             fingerprints.append(fingerprint)
         fingerprints.sort(key=lambda fingerprint: fingerprint['path'])
+        names = [fingerprint['name'] for fingerprint in fingerprints]
+        if len(names) != len(set(names)):
+            raise CloudError('Each selected archive must have a unique filename before uploading.')
         return _upload_snapshots(fingerprints, snapshots, config, key, state_dir, cancel, progress)
 
 
@@ -216,10 +218,10 @@ def _upload_snapshots(fingerprints, snapshots, config, key, state_dir, cancel, p
             if (journal.get('identity') != identity
                     or not isinstance(journal.get('completed'), dict)
                     or not isinstance(journal.get('pending'), dict)
-                    or not re.fullmatch(re.escape(clean['prefix']) + r'uploadblaze-[0-9a-f]{32}/', journal.get('prefix', ''))):
+                    or journal.get('prefix') != clean['prefix']):
                 raise ValueError('Journal integrity mismatch')
         else:
-            journal = dict(identity=identity, prefix=clean['prefix'] + 'uploadblaze-' + uuid.uuid4().hex + '/',
+            journal = dict(identity=identity, prefix=clean['prefix'],
                            completed={}, pending={})
             _write_journal(journal_path, journal)
     except (OSError, ValueError, TypeError, AttributeError):
@@ -230,8 +232,8 @@ def _upload_snapshots(fingerprints, snapshots, config, key, state_dir, cancel, p
         check_cancel(cancel)
         slot = str(index)
         snapshot_metadata = fingerprint | {'path': snapshots[fingerprint['path']]}
-        # Indexed opaque names prevent duplicate basenames and remote filename edge cases.
-        remote_name = journal['prefix'] + f'{index + 1:04d}-{fingerprint["sha256"][:16]}.7z'
+        # Preserve the archive name so it remains recognizable in Backblaze.
+        remote_name = journal['prefix'] + fingerprint['name']
         try:
             # Re-read the private snapshot, never reopen the original source.
             _fingerprint(snapshot_metadata, cancel)

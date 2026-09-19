@@ -110,9 +110,10 @@ def test_upload_verifies_remote_and_retry_skips_confirmed_version(service):
     api, meta, state, cancel = service
     result = upload(service)
     assert result['uploaded'] == 1 and result['skipped'] == 0
-    assert result['prefix'].startswith('safe/uploadblaze-')
+    assert result['prefix'] == 'safe/'
     assert upload(service) == dict(uploaded=0, skipped=1, prefix=result['prefix'])
     assert len(api.bucket.calls) == 1
+    assert api.bucket.calls == ['safe/protected.7z']
     assert Path(meta['path']).exists()
     journal = next(state.glob('*.json'))
     assert 'SECRET' not in journal.read_text()
@@ -190,15 +191,16 @@ def test_unverified_sha1_is_not_confirmation(service):
         upload(service)
 
 
-def test_changed_content_uses_new_job_prefix(service):
+def test_changed_content_creates_a_new_version_with_the_original_filename(service):
     api, meta, state, cancel = service
     first = upload(service)
     Path(meta['path']).write_bytes(b'new protected content')
     meta.update(size=Path(meta['path']).stat().st_size,
                 sha256=hashlib.sha256(Path(meta['path']).read_bytes()).hexdigest())
     second = upload(service)
-    assert first['prefix'] != second['prefix']
+    assert first['prefix'] == second['prefix'] == 'safe/'
     assert len(api.bucket.calls) == 2
+    assert api.bucket.calls == ['safe/protected.7z', 'safe/protected.7z']
 
 
 def test_missing_protection_metadata_rejected(service):
